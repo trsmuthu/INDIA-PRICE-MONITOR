@@ -1,0 +1,23 @@
+name: India Market Rates Daily Monitor
+on:
+  schedule:
+    # 03:30 UTC = 9:00 AM IST (Monday to Friday)
+    - cron: '30 3 * * 1-5'
+    # 12:30 UTC = 6:00 PM IST (Evening market close)
+    - cron: '30 12 * * 1-5'
+  workflow_dispatch:
+jobs:
+  check-rates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fetch and Push Market Rates
+        env:
+          NTFY_TOPIC: india-market-rates-muthu
+        run: |
+          python3 monitor.py
