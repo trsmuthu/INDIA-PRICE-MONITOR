@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-India Commodity Trend Forecaster & Intelligence Agent (Project #11)
-Customized for 8g Gold (1 Sovereign / Pavan) & Commodity Markets
-Features:
-  - Gold 8g (1 Sovereign) calculation for 22K (Jewelry) and 24K (Pure)
-  - 8g Buying Zone & Support / Resistance targets
-  - Spot Silver (₹/kg) and MCX Copper (₹/kg)
-  - USD/INR & EUR/INR Forex Benchmarks
+India Commodity & Forex Intelligence Forecaster (Project #11)
+Customized for:
+  - Gold 8g (1 Sovereign / Pavan) in 22K (Jewelry) and 24K (Pure)
+  - 22K and 24K 8g Buying Zones & Expected High Targets
+  - Silver (1 kg) & Copper (1 kg) Buying Zones & Expected High Targets
+  - USD/INR & EUR/INR Buying Zones & Expected High Targets
+  - Simple, understandable terminology for Indian investors & buyers
   - Automated cloud delivery to iPhone via ntfy (9:05 AM, 2:00 PM, 6:05 PM IST)
 """
 
@@ -73,15 +73,34 @@ def get_market_metrics(sym):
         return None
 
 
-def fetch_forex_rates():
-    """Fetches USD/INR and EUR/INR rates."""
+def fetch_forex_intelligence():
+    """Fetches USD/INR and EUR/INR rates and calculates Buying Zones."""
     usd_data = get_market_metrics("USDINR=X")
-    usd_inr = round(float(usd_data["cur"] if usd_data else 92.90), 2)
+    usd_cur = round(float(usd_data["cur"] if usd_data else 92.90), 2)
+    usd_buy_floor = round(usd_cur * 0.985, 2)
+    usd_buy_ceil = round(usd_cur * 0.992, 2)
+    usd_target = round(usd_cur * 1.025, 2)
 
     eur_data = get_market_metrics("EURINR=X")
-    eur_inr = round(float(eur_data["cur"] if eur_data else 101.33), 2)
+    eur_cur = round(float(eur_data["cur"] if eur_data else 101.18), 2)
+    eur_buy_floor = round(eur_cur * 0.98, 2)
+    eur_buy_ceil = round(eur_cur * 0.99, 2)
+    eur_target = round(eur_cur * 1.03, 2)
 
-    return usd_inr, eur_inr
+    return {
+        "usd": {
+            "cur": usd_cur,
+            "buy_floor": usd_buy_floor,
+            "buy_ceil": usd_buy_ceil,
+            "target": usd_target
+        },
+        "eur": {
+            "cur": eur_cur,
+            "buy_floor": eur_buy_floor,
+            "buy_ceil": eur_buy_ceil,
+            "target": eur_target
+        }
+    }
 
 
 def evaluate_trend(cur, ma_20):
@@ -89,7 +108,7 @@ def evaluate_trend(cur, ma_20):
     if diff > 1.5:
         return "🟢 BULLISH (Uptrend)", "Accumulate on dips; upward momentum active."
     elif diff < -1.5:
-        return "🟡 VALUE ZONE (Support)", "Testing key support floor; favorable entry for buyers."
+        return "🟡 VALUE ZONE (Favorable Buying)", "Testing key support floor; good time to buy on dips."
     else:
         return "⚪ NEUTRAL (Consolidation)", "Sideways range-bound movement; hold positions."
 
@@ -112,23 +131,32 @@ def fetch_commodity_intelligence(usd_inr):
 
     # 8g Moving Average and Support / Resistance
     g_ma20_8g = round((g["ma_20"] / 31.1034768) * 8 * usd_inr * (22 / 24), 0)
-    g_8g_buy_floor = round(g_8g_22k * 0.97, -2)
-    g_8g_buy_ceiling = round(g_8g_22k * 0.985, -2)
-    g_8g_target = round(g_8g_22k * 1.04, -2)
+
+    # 22K 8g Buying Zone & Target
+    g_22k_buy_floor = round(g_8g_22k * 0.97, -2)
+    g_22k_buy_ceil = round(g_8g_22k * 0.985, -2)
+    g_22k_target = round(g_8g_22k * 1.04, -2)
+
+    # 24K 8g Buying Zone & Target
+    g_24k_buy_floor = round(g_8g_24k * 0.97, -2)
+    g_24k_buy_ceil = round(g_8g_24k * 0.985, -2)
+    g_24k_target = round(g_8g_24k * 1.04, -2)
+
     g_trend, g_action = evaluate_trend(g_8g_22k, g_ma20_8g)
 
     # Silver (1 kg)
     s_cur = round((s["cur"] / 31.1034768) * 1000 * usd_inr, 0)
     s_ma20 = round((s["ma_20"] / 31.1034768) * 1000 * usd_inr, 0)
-    s_sup = round(s_cur * 0.95, -2)
-    s_res = round(s_cur * 1.06, -2)
+    s_buy_floor = round(s_cur * 0.95, -2)
+    s_buy_ceil = round(s_cur * 0.97, -2)
+    s_target = round(s_cur * 1.06, -2)
     s_trend, s_action = evaluate_trend(s_cur, s_ma20)
 
     # Copper (1 kg, 1 lb = 0.45359237 kg)
     c_cur = round((c["cur"] * usd_inr) / 0.45359237, 1)
     c_ma20 = round((c["ma_20"] * usd_inr) / 0.45359237, 1)
-    c_sup = round(c_cur * 0.97, 1)
-    c_res = round(c_cur * 1.04, 1)
+    c_buy_floor = round(c_cur * 0.97, 1)
+    c_target = round(c_cur * 1.04, 1)
     c_trend, c_action = evaluate_trend(c_cur, c_ma20)
 
     return {
@@ -137,14 +165,30 @@ def fetch_commodity_intelligence(usd_inr):
             "24k_8g": g_8g_24k,
             "22k_1g": g_1g_22k,
             "24k_1g": round(g_1g_24k, 0),
-            "buy_floor": g_8g_buy_floor,
-            "buy_ceiling": g_8g_buy_ceiling,
-            "target": g_8g_target,
+            "22k_buy_floor": g_22k_buy_floor,
+            "22k_buy_ceil": g_22k_buy_ceil,
+            "22k_target": g_22k_target,
+            "24k_buy_floor": g_24k_buy_floor,
+            "24k_buy_ceil": g_24k_buy_ceil,
+            "24k_target": g_24k_target,
             "trend": g_trend,
             "action": g_action
         },
-        "silver": {"cur": s_cur, "sup": s_sup, "res": s_res, "trend": s_trend, "action": s_action},
-        "copper": {"cur": c_cur, "sup": c_sup, "res": c_res, "trend": c_trend, "action": c_action},
+        "silver": {
+            "cur": s_cur,
+            "buy_floor": s_buy_floor,
+            "buy_ceil": s_buy_ceil,
+            "target": s_target,
+            "trend": s_trend,
+            "action": s_action
+        },
+        "copper": {
+            "cur": c_cur,
+            "buy_floor": c_buy_floor,
+            "target": c_target,
+            "trend": c_trend,
+            "action": c_action
+        },
     }
 
 
@@ -175,44 +219,54 @@ def run_intelligence_brief():
     now_ist = datetime.now(ist)
     timestamp = now_ist.strftime("%d %b %Y, %I:%M %p IST")
 
-    print(f"[{timestamp}] Running 8g Gold & Commodity Intelligence Forecaster...")
-    usd_inr, eur_inr = fetch_forex_rates()
-    data = fetch_commodity_intelligence(usd_inr)
+    print(f"[{timestamp}] Running Commodity & Forex Intelligence Forecaster...")
+    forex = fetch_forex_intelligence()
+    usd = forex["usd"]
+    eur = forex["eur"]
 
-    g = data["gold_8g"]
-    s = data["silver"]
-    c = data["copper"]
+    commodities = fetch_commodity_intelligence(usd["cur"])
+    g = commodities["gold_8g"]
+    s = commodities["silver"]
+    c = commodities["copper"]
 
     report = (
-        f"📈 COMMODITY TREND FORECASTER & INTELLIGENCE\n"
+        f"📈 COMMODITY & FOREX INTELLIGENCE REPORT\n"
         f"⏰ Updated: {timestamp}\n\n"
         f"🥇 GOLD (8g · 1 Sovereign / Pavan)\n"
         f"   • 22K (Jewelry): ₹{g['22k_8g']:,.0f} / 8g (₹{g['22k_1g']:,.0f}/g)\n"
         f"   • 24K (Pure): ₹{g['24k_8g']:,.0f} / 8g (₹{g['24k_1g']:,.0f}/g)\n"
         f"   • Trend: {g['trend']}\n"
-        f"   • Buy Zone (22K · 8g): ₹{g['buy_floor']:,.0f} – ₹{g['buy_ceiling']:,.0f}\n"
-        f"   • Target Resistance: ₹{g['target']:,.0f}\n"
+        f"   • 22K Buying Zone (8g): ₹{g['22k_buy_floor']:,.0f} – ₹{g['22k_buy_ceil']:,.0f}\n"
+        f"   • 24K Buying Zone (8g): ₹{g['24k_buy_floor']:,.0f} – ₹{g['24k_buy_ceil']:,.0f}\n"
+        f"   • Expected High Target: ₹{g['22k_target']:,.0f} (22K) · ₹{g['24k_target']:,.0f} (24K)\n"
         f"   • AI Insight: {g['action']}\n\n"
         f"🥈 SILVER (1 kg)\n"
         f"   • Spot Rate: ₹{s['cur']:,.0f} / kg (₹{round(s['cur']/1000):,.0f}/g)\n"
         f"   • Trend: {s['trend']}\n"
-        f"   • Buy Zone: ₹{s['sup']:,.0f} | Target: ₹{s['res']:,.0f}\n"
+        f"   • Buying Zone: ₹{s['buy_floor']:,.0f} – ₹{s['buy_ceil']:,.0f}\n"
+        f"   • Expected High Target: ₹{s['target']:,.0f}\n"
         f"   • AI Insight: {s['action']}\n\n"
         f"🥉 COPPER (1 kg)\n"
         f"   • MCX Rate: ₹{c['cur']:,.1f} / kg\n"
         f"   • Trend: {c['trend']}\n"
-        f"   • Support: ₹{c['sup']:,.1f} | Resistance: ₹{c['res']:,.1f}\n\n"
-        f"💵 FOREX BENCHMARK:\n"
-        f"   • USD/INR: ₹{usd_inr:.2f} · EUR/INR: ₹{eur_inr:.2f}\n"
+        f"   • Buying Floor: ₹{c['buy_floor']:,.1f} | Expected High Target: ₹{c['target']:,.1f}\n\n"
+        f"💵 USD / INR (1 US Dollar)\n"
+        f"   • Current Rate: ₹{usd['cur']:.2f}\n"
+        f"   • Buying Zone (Favorable Dip): ₹{usd['buy_floor']:.2f} – ₹{usd['buy_ceil']:.2f}\n"
+        f"   • Expected High Target: ₹{usd['target']:.2f}\n\n"
+        f"💶 EUR / INR (1 Euro)\n"
+        f"   • Current Rate: ₹{eur['cur']:.2f}\n"
+        f"   • Buying Zone (Favorable Dip): ₹{eur['buy_floor']:.2f} – ₹{eur['buy_ceil']:.2f}\n"
+        f"   • Expected High Target: ₹{eur['target']:.2f}\n"
     )
 
     print("========================================")
-    print(" COMMODITY INTELLIGENCE REPORT (8G GOLD)")
+    print(" APPROVED COMMODITY & FOREX REPORT")
     print("========================================")
     print(report)
 
     click_link = "https://www.moneycontrol.com/commodity/"
-    send_iphone_alert("Gold 8g (Sovereign) & Commodity Forecast", report, click_url=click_link)
+    send_iphone_alert("Commodity & Forex Intelligence", report, click_url=click_link)
 
 
 def main():
@@ -220,7 +274,7 @@ def main():
         print("Sending test notification to iPhone...")
         send_iphone_alert(
             "Market Forecaster Connected!",
-            "Your 8g Gold (1 Sovereign) & Commodity Forecaster is active!"
+            "Your 8g Gold & Forex Buying Zone Forecaster is active!"
         )
         return
 
